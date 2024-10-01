@@ -1,0 +1,2310 @@
+local library = {}
+
+getcustomasset = getcustomasset or function() end
+base64_decode = base64_decode or function() end
+cloneref = cloneref or function(s) return s end
+makefolder = makefolder or function() end
+writefile = writefile or function() end
+isfolder = isfolder or function() end
+isfile = isfile or function() end
+listfiles = listfiles or function() end
+readfile = readfile or function() end
+
+local ReplicatedStorage = cloneref(game:FindService("ReplicatedStorage"))
+local UserInputService  = cloneref(game:FindService("UserInputService"))
+local TweenService      = cloneref(game:FindService("TweenService"))
+local HttpService 		= cloneref(game:FindService("HttpService"))
+local RunService        = cloneref(game:FindService("RunService"))
+local Workspace_        = cloneref(game:FindService("Workspace"))
+local Players           = cloneref(game:FindService("Players"))
+local Debris            = cloneref(game:FindService("Debris"))
+
+local hex = Color3.fromHex
+local hsv = Color3.fromHSV
+local rgb = Color3.fromRGB
+
+local rgbkey = ColorSequenceKeypoint.new
+local rgbseq = ColorSequence.new
+local numkey = NumberSequenceKeypoint.new
+local numseq = NumberSequence.new
+
+local dim2 = UDim2.new
+local dim = UDim.new
+local vec2 = Vector2.new
+local rect = Rect.new
+
+local floor = math.floor
+local clamp = math.clamp
+local log10 = math.log10
+
+local gsub = string.gsub
+local format = string.format
+local find = string.find
+local match = string.match
+local split = string.split
+
+function library:tableize(target)
+	local _table = {}
+
+	for key, _ in target do
+		_table[key] = {}
+	end
+
+	return _table
+end
+
+function library:tween(instance, info, goal, _wait)
+	info = TweenInfo.new(
+		info.Duration or 0.15, 
+		Enum.EasingStyle[info.Style or "Quad"], 
+		Enum.EasingDirection[info.Direction or "Out"],
+		0,
+		false,
+		info.DelayTime or 0
+	)
+
+	TweenService:Create(instance, info, goal):Play()
+
+	if _wait then
+		task.wait(_wait) 
+	end
+end
+
+function library:fontchange(font)
+	library.font = font or library.font
+	
+	for _, text in library.texts do
+		if text.FontFace == library.font then continue end
+
+		text.FontFace = library.font
+	end
+end
+
+function library:textsizechange(num)
+	library.textsize = num or library.textsize
+
+	for _, text in library.texts do
+		if text.TextSize == library.textsize then continue end
+
+		text.TextSize = library.textsize
+	end
+end
+
+function library:themechange(theme, color)
+	if library.theme[theme] == color then return end
+
+	library.theme[theme] = color
+	for _, data in library.themedinstances[theme] do
+		if data[1][data[2]] == color then continue end
+
+		library:tween(data[1], {duration = .15}, {[data[2]] = color})
+	end
+end
+
+function library:themeinstance(obj, props)
+	for property, value in props do
+		obj[property] = library.theme[value] 
+	end
+
+	table.insert(library.themedinstances, {obj, props})
+end
+
+function library:create(class, info, ignoretheme)
+	local instance = Instance.new(class)
+
+	for property, value in info do
+		instance[property] = value
+
+		if typeof(value) ~= "Color3" or ignoretheme then continue end
+		if property == "BorderColor3" and instance.BorderSizePixel == 0 then continue end
+
+		for key, color in library.theme do
+			if property ~= "TextColor3" and color == library.theme.TextColor then continue end
+
+			if color == value then 
+				table.insert(library.themedinstances[key], {instance, property})
+				continue
+			end
+		end
+	end
+	
+	if find(class, "Text") then
+		table.insert(library.texts, instance)
+	end
+	
+	table.insert(library.instances, instance)
+	return instance
+end
+
+function library:round(number, places)
+	places = gsub(-log10(places or 0.01), "^-0$", "0") 
+
+	return tonumber(format(`%.{places}f`, number))
+end
+
+library.instances = {}
+library.texts = {}
+library.fonts = {}
+library.theme = {
+	["AccentColor"] = rgb(255, 255, 255),
+	["PrimaryColor"] = rgb(27, 27, 27),
+	["SecondaryColor"] = rgb(44, 44, 44),
+	["OutlineColor"] = rgb(61, 61, 61),
+	["InlineColor"] = rgb(21, 21, 21),
+	["DividerColor"] = rgb(23, 23, 23),
+	["ElementColor"] = rgb(25, 25, 25),
+	["TextColor"] = rgb(200, 200, 200),
+	["RowTextColor"] = rgb(200, 200, 200),
+}
+
+library.defaulttheme = table.clone(library.theme)
+library.themedinstances = library:tableize(library.theme)
+library.textsize = 12
+library.font = nil
+
+library.notification_list = function(parent, info)
+	info = info or {} do
+		info.open = info.open
+	end
+
+	local instances = {} do
+		instances.notificationholder = library:create("Frame", {
+			Parent = parent,
+			BorderColor3 = library.theme["OutlineColor"],
+			BackgroundTransparency = 1,
+			Position = dim2(0, 3, 0, 60),
+			Size = dim2(0, 100, 0, 100),
+			BorderSizePixel = 0,
+			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.notificationholder,
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+	end
+
+	return instances.notificationholder, instances
+end
+
+library.notification = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+		info.open = info.open
+	end
+
+	local instances = {} do
+		instances.notification = library:create("Frame", {
+			Parent = parent,
+			BackgroundTransparency = 1,
+			Size = dim2(0, 0, 0, 26),
+			BorderColor3 = library.theme["OutlineColor"],
+			BorderSizePixel = 2,
+			BackgroundColor3 = rgb(30, 30, 30)
+		})
+
+		instances.realnotification = library:create("CanvasGroup", {
+			Parent = instances.notification,
+			Size = dim2(0, 0, 1, -6),
+			BorderColor3 = library.theme["OutlineColor"],
+			BorderSizePixel = 0,
+			AutomaticSize = Enum.AutomaticSize.X,
+			GroupTransparency = 1,
+			BackgroundColor3 = rgb(30, 30, 30)
+		})
+
+		instances.stroke = library:create("UIStroke", {
+			Parent = instances.realnotification,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.liner = library:create("Frame", {
+			Parent = instances.realnotification,
+			AnchorPoint = vec2(0.5, 0),
+			Position = dim2(0.5, 0, 0, 0),
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 0, 2),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["AccentColor"]
+		})
+
+		instances.text = library:create("TextLabel", {
+			Parent = instances.realnotification,
+			AutomaticSize = Enum.AutomaticSize.X,
+			FontFace = library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			Size = dim2(0, 0, 1, 0),
+			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			RichText = true,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.text,
+			PaddingTop = dim(0, 5),
+			PaddingBottom = dim(0, 5),
+			PaddingRight = dim(0, 5),
+			PaddingLeft = dim(0, 5)
+		})
+
+		instances.realnotification.Position = UDim2.new(0, -(instances.notification.AbsoluteSize.X + instances.notification.AbsolutePosition.X), 0, 3)
+	end
+
+	return instances
+end
+
+library.sub_window = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+		info.position = info.position
+		info.width = info.width
+		info.height = info.height
+		info.open = info.open
+	end
+
+	local instances = {} do
+		instances.sub_window = library:create("TextButton", {
+			Parent = parent,
+			Size = dim2(0, info.width, 0, info.height),
+			Text = "",
+			AutoButtonColor = false,
+			AnchorPoint = vec2(0, 0),
+			Visible = info.open,
+			Position = dim2(0, info.position.X, 0, info.position.Y),
+			BorderColor3 = library.theme["OutlineColor"],
+			BorderSizePixel = 2,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundColor3 = library.theme["PrimaryColor"],
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.sub_window,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.infoholder = library:create("Frame", {
+			Parent = instances.sub_window,
+			BorderColor3 = library.theme["OutlineColor"],
+			BackgroundTransparency = 1,
+			Position = dim2(0, 0, 0, 7),
+			Size = dim2(1, 0, 1, -5),
+			BorderSizePixel = 0,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundColor3 = library.theme["TextColor"],
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.infoholder,
+			Padding = dim(0, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+
+		instances.title = library:create("Frame", {
+			Parent = instances.infoholder,
+			Active = true,
+			Selectable = true,
+			BackgroundTransparency = 1,
+			Size = dim2(1, 0, 0, 12),
+			BorderColor3 = library.theme["OutlineColor"],
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"],
+		})
+
+		instances.text = library:create("TextLabel", {
+			Parent = instances.title,
+			FontFace = library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			BackgroundTransparency = 1,
+			Position = dim2(0, 0, 0, -1),
+			Size = dim2(1, 0, 1, 0),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"],
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.infoholder,
+			PaddingBottom = dim(0, 5),
+			PaddingLeft = dim(0, 5),
+			PaddingRight = dim(0, 5)
+		})
+
+		instances.content = library:create("Frame", {
+			Parent = instances.infoholder,
+			Size = dim2(1, 0, 0, 10),
+			Position = dim2(0, 200, 0, 200),
+			BorderColor3 = library.theme["OutlineColor"],
+			BorderSizePixel = 2,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundColor3 = library.theme["PrimaryColor"],
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.content,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.elementholder = library:create("Frame", {
+			Parent = instances.content,
+			BorderColor3 = library.theme["OutlineColor"],
+			BackgroundTransparency = 1,
+			Position = dim2(0, 0, 0, 7),
+			Size = dim2(1, 0, 1, -5),
+			BorderSizePixel = 0,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundColor3 = library.theme["TextColor"],
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.elementholder,
+			Padding = dim(0, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.elementholder,
+			PaddingRight = dim(0, 5),
+			PaddingLeft = dim(0, 5)
+		})
+
+		instances.sub_accent = library:create("Frame", {
+			Parent = instances.content,
+			AnchorPoint = vec2(0.5, 0),
+			Position = dim2(0.5, 0, 0, 0),
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 0, 2),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["AccentColor"],
+		})
+
+		instances.accent = library:create("Frame", {
+			Parent = instances.sub_window,
+			AnchorPoint = vec2(0.5, 0),
+			Position = dim2(0.5, 0, 0, 0),
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 0, 2),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["AccentColor"],
+		})
+
+		instances.resize = library:create("Frame", {
+			Parent = instances.sub_window,
+			BackgroundTransparency = 1,
+			Size = dim2(0, 30, 0, 30),
+			Position = dim2(1, -15, 1, -15)
+		})
+	end
+
+	return instances.elementholder, instances
+end
+
+library.window = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+		info.subtitle = info.subtitle
+		info.position = info.position
+		info.width = info.width
+		info.height = info.height
+		info.open = info.open
+	end
+
+	local instances = {} do
+		instances.outline = library:create("TextButton", {
+			Parent = parent,
+			BorderColor3 = library.theme["OutlineColor"],
+			AnchorPoint = vec2(0, 0),
+			AutoButtonColor = false,
+			Position = info.position == "center" and dim2(0, (parent.AbsoluteSize.X - info.width) / 2, 0, (parent.AbsoluteSize.Y - info.height) / 2) or dim2(0, info.position.X, 0, info.position.Y),
+			Size = dim2(0, info.width, 0, info.height),
+			ZIndex = -1,
+			Text = "",
+			BorderSizePixel = 2,
+			Visible = info.open,
+			BackgroundColor3 = library.theme["PrimaryColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.outline,
+			Color = library.theme["AccentColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.inline = library:create("Frame", {
+			Parent = instances.outline,
+			BorderColor3 = library.theme["OutlineColor"],
+			AnchorPoint = vec2(0.5, 0.5),
+			Position = dim2(0.5, 0, 0.5, 7),
+			Size = dim2(1, -15, 1, -27),
+			ZIndex = -1,
+			BorderSizePixel = 2,
+			BackgroundColor3 = library.theme["SecondaryColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.inline,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.main = library:create("Frame", {
+			Parent = instances.inline,
+			BorderColor3 = library.theme["OutlineColor"],
+			AnchorPoint = vec2(0.5, 0.5),
+			Position = dim2(0.5, 0, 0.5, 12),
+			Size = dim2(1, -15, 1, -35),
+			ZIndex = 0,
+			BorderSizePixel = 2,
+			BackgroundColor3 = library.theme["PrimaryColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.main,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.content = library:create("Frame", {
+			Parent = instances.main,
+			BackgroundTransparency = 1,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 1, 0),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.tabholder = library:create("Frame", {
+			Parent = instances.inline,
+			BackgroundTransparency = 1,
+			Position = dim2(0, 7, 0, 8),
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, -15, 0, 20),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.tabholder,
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalFlex = Enum.UIFlexAlignment.Fill,
+			Padding = dim(0, 6),
+			ItemLineAlignment = Enum.ItemLineAlignment.Start,
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+
+		instances.title = library:create("TextLabel", {
+			Parent = instances.outline,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			RichText = true,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Size = dim2(1, 0, 0, 20),
+			Position = dim2(0, 8, 0, 0),
+			BackgroundTransparency = 11,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			BorderSizePixel = 0,
+			ZIndex = -1,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.subtitle = library:create("TextLabel", {
+			Parent = instances.outline,
+			RichText = true,
+			TextColor3 = rgb(207, 207, 207),
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.subtitle,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			FontFace =  library.font,
+			Size = dim2(0, 200, 0, 20),
+			AnchorPoint = vec2(1, 0),
+			Position = dim2(1, -8, 0, 0),
+			BackgroundTransparency = 11,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			BorderSizePixel = 0,
+			ZIndex = -1,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.resize = library:create("Frame", {
+			Parent = instances.outline,
+			BackgroundTransparency = 1,
+			Size = dim2(0, 30, 0, 30),
+			Position = dim2(1, -15, 1, -15)
+		})
+	end
+
+	return instances.content, instances.tabholder, instances
+end
+
+library.tab_button = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+		info.active = info.active
+	end
+
+	local instances = {} do
+		instances.inline = library:create("Frame", {
+			Parent = parent,
+			BorderColor3 = library.theme["OutlineColor"],
+			ZIndex = -1,
+			BorderSizePixel = 2,
+			Size = dim2(0, 85, 1, -1)
+		})
+
+		instances.inactive = library:create("Frame", {
+			Parent = instances.inline,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 1, 1),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["PrimaryColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.inactive,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.hide = library:create("Frame", {
+			Parent = instances.inactive,
+			Visible = info.active,
+			BorderColor3 = library.theme["OutlineColor"],
+			AnchorPoint = vec2(0, 1),
+			Position = dim2(0, 0, 1, 2),
+			Size = dim2(1, 0, 0, 2),
+			ZIndex = 2,
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["PrimaryColor"]
+		})
+
+		instances.liner = library:create("Frame", {
+			Parent = instances.inactive,
+			Visible = info.active,
+			Size = dim2(1, 0, 0, 2),
+			BorderColor3 = library.theme["OutlineColor"],
+			ZIndex = 2,
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["AccentColor"]
+		})
+
+		instances.text = library:create("TextLabel", {
+			Parent = instances.inactive,
+			FontFace =  library.font,
+			TextTransparency = info.active and 1 or 0,
+			TextColor3 = library.theme["TextColor"],
+			Text = info.title,
+			Size = dim2(1, 0, 1, 0),
+			TextSize = library.textsize,
+			BackgroundTransparency = 1
+		})
+
+		instances.text_accent = library:create("TextLabel", {
+			Parent = instances.inactive,
+			FontFace =  library.font,
+			TextTransparency = info.active and 0 or 1,
+			TextColor3 = library.theme["AccentColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			Size = dim2(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			TextSize = library.textsize,
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+	end
+
+	return instances
+end
+
+library.tab = function(parent, info)
+	info = info or {} do
+		info.active = info.active
+	end
+
+	local instances = {} do
+		instances.tab = library:create("Frame", {
+			Parent = parent,
+			Visible = info.active,
+			BackgroundTransparency = 1,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 1, 0),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.tab,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalFlex = Enum.UIFlexAlignment.Fill,
+			Padding = dim(0, 4)
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.tab,
+			PaddingBottom = dim(0, 5),
+			PaddingTop = dim(0, 12)
+		})
+
+		instances.sectionholders = library:create("Frame", {
+			Parent = instances.tab,
+			Size = dim2(1, 200, 1, -17),
+			LayoutOrder = 1,
+			Position = dim2(0, -100, 0, 12),
+			BackgroundTransparency = 1,
+			BorderColor3 = library.theme["OutlineColor"],
+			BorderSizePixel = 0,
+			ClipsDescendants = true,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.left = library:create("ScrollingFrame", {
+			Parent = instances.sectionholders,
+			TopImage = "rbxassetid://9634165297",
+			MidImage = "rbxassetid://9634165297",
+			BottomImage = "rbxassetid://9634165297",
+			Active = true,
+			ScrollBarThickness = 2,
+			ScrollBarImageColor3 = library.theme["AccentColor"],
+			HorizontalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
+			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			CanvasSize = UDim2.new(0, 0, 0, 0),
+			ClipsDescendants = false,
+			BackgroundTransparency = 1,
+			Position = dim2(0, 107, 0, 0),
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(0.5, -107, 1, 0),
+			Name = "left",
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.left,
+			PaddingBottom = dim(0, 12),
+			PaddingTop = dim(0, 2),
+			PaddingRight = dim(0, 7)
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.left,
+			Padding = dim(0, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		})
+
+		instances.right = library:create("ScrollingFrame", {
+			Parent = instances.sectionholders,
+			TopImage = "rbxassetid://9634165297",
+			MidImage = "rbxassetid://9634165297",
+			BottomImage = "rbxassetid://9634165297",
+			Active = true,
+			ScrollBarThickness = 2,
+			ScrollBarImageColor3 = library.theme["AccentColor"],
+			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			HorizontalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
+			CanvasSize = UDim2.new(0, 0, 0, 0),
+			ClipsDescendants = false,
+			BorderColor3 = library.theme["OutlineColor"],
+			BackgroundTransparency = 1,
+			Position = dim2(0.5, 7, 0, 0),
+			Size = dim2(0.5, -107, 1, 0),
+			Name = "right",
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.right,
+			PaddingBottom = dim(0, 12),
+			PaddingTop = dim(0, 2),
+			PaddingRight = dim(0, 7)
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.right,
+			Padding = dim(0, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+
+	end
+
+	return instances.sectionholders, instances.tab, instances
+end
+
+library.player_list = function(parent, info)
+	info = info or {} do
+		info.active = info.active
+	end
+
+	local instances = {} do
+		instances.player_list = library:create("Frame", {
+			Parent = parent,
+			ClipsDescendants = true,
+			BorderColor3 = library.theme["OutlineColor"],
+			BackgroundTransparency = 1,
+			Position = dim2(0, 100, 0, 12),
+			Size = dim2(1, 200, 1, -17),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.content = library:create("ScrollingFrame", {
+			Parent = instances.player_list,
+			TopImage = "rbxassetid://9634165297",
+			MidImage = "rbxassetid://9634165297",
+			BottomImage = "rbxassetid://9634165297",
+			Active = true,
+			ScrollBarThickness = 2,
+			ScrollBarImageColor3 = library.theme["AccentColor"],
+			HorizontalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
+			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			CanvasSize = UDim2.new(0, 0, 0, 0),
+			ClipsDescendants = false,
+			BackgroundTransparency = 1,
+			Position = dim2(0, 107, 0, 12),
+			Size = dim2(1, -207, 1, -17),
+			BorderColor3 = library.theme["OutlineColor"],
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.content,
+			PaddingBottom = dim(0, 0),
+			PaddingTop = dim(0, 2),
+			PaddingRight = dim(0, 7)
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.content,
+			Padding = dim(0, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+	end
+
+	return instances.content, instances
+end
+
+library.section = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+	end
+
+	local instances = {} do
+		instances.section = library:create("Frame", {
+			Parent = parent,
+			Size = dim2(1, 0, 0, 25),
+			BorderColor3 = library.theme["OutlineColor"],
+			BorderSizePixel = 2,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundColor3 = library.theme["SecondaryColor"],
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.section,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.content = library:create("Frame", {
+			Parent = instances.section,
+			BackgroundTransparency = 1,
+			Position = dim2(0, 0, 0, 7),
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 1, -5),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.content,
+			Padding = dim(0, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+
+		instances.text_holder = library:create("Frame", {
+			Parent = instances.content,
+			Active = true,
+			Selectable = true,
+			BackgroundTransparency = 1,
+			Size = dim2(1, 0, 0, 12),
+			BorderColor3 = library.theme["OutlineColor"],
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.text = library:create("TextLabel", {
+			Parent = instances.text_holder,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			Size = dim2(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = dim2(0, 0, 0, -1),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+		library:create("UIPadding", {
+			Parent = instances.content,
+			PaddingBottom = dim(0, 3),
+			PaddingLeft = dim(0, 5),
+			PaddingRight = dim(0, 5)
+		})
+
+		instances.liner = library:create("Frame", {
+			Parent = instances.section,
+			AnchorPoint = vec2(0.5, 0),
+			Position = dim2(0.5, 0, 0, 0),
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 0, 2),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["AccentColor"]
+		})
+	end
+
+	return instances.content, instances
+end
+
+library.toggle = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+		info.active = info.active
+	end
+
+	local instances = {} do
+		instances.toggle = library:create("Frame", {
+			Parent = parent,
+			Active = true,
+			Selectable = true,
+			BackgroundTransparency = 1,
+			Size = dim2(1, 0, 0, 12),
+			BorderColor3 = library.theme["OutlineColor"],
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.text = library:create("TextLabel", {
+			Parent = instances.toggle,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			Size = dim2(1, -16, 1, 0),
+			BackgroundTransparency = 1,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = dim2(0, 16, 0, -1),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.indicator = library:create("Frame", {
+			Parent = instances.toggle,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(0, 11, 0, 11),
+			BorderSizePixel = 2,
+			BackgroundTransparency = info.active and 1 or 0,
+			BackgroundColor3 = library.theme["ElementColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.indicator,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.indicator,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, rgb(181, 181, 181)), rgbkey(1, library.theme["TextColor"])}
+		})
+
+		instances.indicator_accent = library:create("Frame", {
+			Parent = instances.toggle,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(0, 11, 0, 11),
+			BorderSizePixel = 2,
+			BackgroundTransparency = info.active and 0 or 1,
+			BackgroundColor3 = library.theme["AccentColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.indicator_accent,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.indicator_accent,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, rgb(181, 181, 181)), rgbkey(1, library.theme["TextColor"])}
+		})
+
+		instances.holders = library:create("Frame", {
+			Parent = instances.toggle,
+			BorderColor3 = library.theme["OutlineColor"],
+			AnchorPoint = vec2(1, 0),
+			BackgroundTransparency = 1,
+			Position = dim2(1, 0, 0, 0),
+			Size = dim2(1, 0, 1, 0),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.holders,
+			Padding = dim(0, 4),
+			HorizontalAlignment = Enum.HorizontalAlignment.Right,
+			FillDirection = Enum.FillDirection.Horizontal,
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+	end
+
+	return instances.holders, instances
+end
+
+library.label = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+		info.paragraph = info.paragraph
+		info.alignment = info.alignment
+	end
+
+	local instances = {} do
+		instances.text = library:create("TextLabel", {
+			Parent = parent,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			RichText = true,
+			TextWrapped = info.paragraph,
+			AnchorPoint = vec2(info.alignment:lower() == "right" and 1 or 0, 0),
+			Size = dim2(1, 0, 0, 13),
+			BackgroundTransparency = 1,
+			TextXAlignment = Enum.TextXAlignment[string.gsub(info.alignment:lower(), "^%l", function(l) return l:upper() end)],
+			Position = info.alignment:lower() == "right" and dim2(1, 0, 0, -1) or dim2(0, 16, 0, -1),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+	end
+
+	return instances.text, instances
+end
+
+library.divider = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+	end
+
+	local instances = {} do
+		instances.divider = library:create("Frame", {
+			Parent = parent,
+			Active = true,
+			Selectable = true,
+			BackgroundTransparency = 1,
+			Size = dim2(1, 0, 0, 12),
+			BorderColor3 = library.theme["OutlineColor"],
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.text = library:create("TextLabel", {
+			Parent = instances.divider,
+			FontFace = library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			BackgroundTransparency = 1,
+			Text = info.title,
+			AnchorPoint = vec2(0.5, 0.5),
+			Size = dim2(0, 5, 1, 0),
+			Position = dim2(0.5, 0, 0.5, 0),
+			BorderSizePixel = 0,
+			AutomaticSize = Enum.AutomaticSize.X,
+			TextSize = library.textsize,
+			BackgroundColor3 = rgb(14, 14, 14)
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.text,
+			PaddingRight = dim(0, 7),
+			PaddingLeft = dim(0, 5)
+		})
+
+		instances.divider_left = library:create("Frame", {
+			Parent = instances.divider,
+			Position = dim2(0, 0, 0.5, 0),
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(0.5, - (instances.text.AbsoluteSize.X / 2) - 1, 0, 2),
+			BackgroundColor3 = rgb(18, 18, 18)
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.divider_left,
+			Thickness = 0.8,
+			Color = library.theme["InlineColor"]
+		})
+
+		instances.divider_right = library:create("Frame", {
+			Parent = instances.divider,
+			Position = dim2(0.5, (instances.text.AbsoluteSize.X / 2) - 1, 0.5, 0),
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(0.5, - (instances.text.AbsoluteSize.X / 2) - 1, 0, 2),
+			BackgroundColor3 = rgb(18, 18, 18)
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.divider_right,
+			Thickness = 0.800000011920929,
+			Color = library.theme["InlineColor"]
+		})
+	end
+
+	return instances
+end
+
+library.keybind = function(parent, info)
+	info = info or {} do
+		info.default = info.default
+		info.mode = info.mode
+		info.key = info.key
+		info.keyname = info.keyname
+		info.parent = info.parent
+		info.modes = info.modes
+	end
+
+	local instances = {} do
+
+		instances.keybind = info.parent.class == "element" and parent or library:create("Frame", {
+			Parent = parent,
+			BackgroundTransparency = 1,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 0, 12),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.text = info.parent.class ~= "element" and library:create("TextLabel", {
+			Parent = instances.keybind,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			Size = dim2(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = dim2(0, 0, 0, -1),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		}) or nil
+
+		instances.key = library:create("TextButton", {
+			Parent = instances.keybind,
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = "",
+			AutoButtonColor = false,
+			AnchorPoint = vec2(1, 0),
+			Size = dim2(0, 40, 0, 12),
+			Position = dim2(1, 0, 0, 0),
+			BorderSizePixel = 2,
+			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundColor3 = library.theme["ElementColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.key,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.key,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, rgb(181, 181, 181)), rgbkey(1, library.theme["TextColor"])}
+		})
+
+		instances.value = library:create("TextLabel", {
+			Parent = instances.key,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			Text = info.keyname,
+			Size = dim2(0, 40, 1, 0),
+			AutomaticSize = Enum.AutomaticSize.X,
+			TextSize = library.textsize,
+			BackgroundTransparency = 1
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.value,
+			PaddingLeft = dim(0, 7),
+			PaddingRight = dim(0, 7)
+		})
+
+		instances.window = library:create("Frame", {
+			Parent = instances.key,
+			Visible = false,
+			BorderColor3 = library.theme["OutlineColor"],
+			AnchorPoint = vec2(1, 0),
+			Position = dim2(1, 0, 1, 10),
+			Size = dim2(0, 50, 0, 50),
+			ZIndex = 50,
+			Rotation = .0000000001,
+			BorderSizePixel = 2,
+			BackgroundColor3 = rgb(18, 18, 18)
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.window,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.window,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			VerticalFlex = Enum.UIFlexAlignment.Fill
+		})
+
+		for i , mode in {"toggle", "hold", "always"} do
+			instances[mode] = library:create("TextButton", {
+				Parent = instances.window,
+				FontFace =  library.font,
+				TextColor3 = library.theme["TextColor"],
+				TextTransparency = info.mode == mode and 1 or 0,
+				Text = mode,
+				Modal = true,
+				Size = dim2(1, 0, 0, 13),
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				BorderColor3 = library.theme["OutlineColor"],
+				ZIndex = 50,
+				TextSize = library.textsize,
+				BackgroundColor3 = library.theme["TextColor"]
+			})
+
+			instances[mode .. "_accent"] = library:create("TextLabel", {
+				Parent = instances[mode],
+				FontFace =  library.font,
+				TextColor3 = library.theme["AccentColor"],
+				BorderColor3 = library.theme["OutlineColor"],
+				TextTransparency = info.mode == mode and 0 or 1,
+				Text = mode,
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Size = dim2(1, 0, 1, 0),
+				ZIndex = 50,
+				TextSize = library.textsize,
+				BackgroundColor3 = library.theme["TextColor"]
+			})
+
+			info.modes[mode] = {text = instances[mode], text_accent = instances[mode .. "_accent"]}
+		end
+	end
+
+	return instances
+end
+
+library.colorpicker = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+		info.default = info.default
+		info.parent = info.parent
+	end
+
+	info.value = table.concat({library:round(info.default.R * 255, 1), library:round(info.default.G * 255, 1), library:round(info.default.B * 255, 1)}, ", ")
+	info.h, info.s, info.v = info.default:ToHSV()
+
+	local instances = {} do
+		instances.colorpicker = info.parent.class == "element" and parent or library:create("Frame", {
+			Parent = parent,
+			BackgroundTransparency = 1,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 0, 12),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.text = info.parent.class ~= "element" and library:create("TextLabel", {
+			Parent = instances.colorpicker,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			Size = dim2(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = dim2(0, 0, 0, -1),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.gridbutton = library:create("ImageLabel", {
+			Parent = instances.colorpicker,
+			ScaleType = Enum.ScaleType.Tile,
+			ResampleMode = Enum.ResamplerMode.Pixelated,
+			TileSize = UDim2.new(0, 9, 0, 9),
+			BorderColor3 = library.theme["OutlineColor"],
+			Image = "rbxassetid://18274452449",
+			BackgroundTransparency = 1,
+			Position = dim2(1, -21, 0, 0),
+			Size = dim2(0, 21, 0, 12),
+			BorderSizePixel = 2,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.colorbutton = library:create("Frame", {
+			Parent = instances.gridbutton,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 1, 0),
+			BorderSizePixel = 2,
+			BackgroundTransparency = info.alpha and 1 - info.alpha or 0,
+			BackgroundColor3 = info.default
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.colorbutton,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.colorbutton,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, library.theme["TextColor"]), rgbkey(1, rgb(210, 210, 210))}
+		})
+
+		instances.window = library:create("TextButton", {
+			Parent = instances.gridbutton,
+			Visible = false,
+			AutoButtonColor = false,
+			Rotation = .0000000001,
+			Text = "",
+			Modal = true,
+			BorderColor3 = library.theme["OutlineColor"],
+			AnchorPoint = vec2(1, 0),
+			Position = dim2(1, 0, 1, 10),
+			Size = dim2(0, 150, 0, 120 + (info.alpha and 20 or 0)),
+			ZIndex = 100,
+			BorderSizePixel = 1,
+			BackgroundColor3 = library.theme["PrimaryColor"]
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.window,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, library.theme["TextColor"]), rgbkey(1, rgb(113, 113, 113))}
+		})
+
+		instances.hue = library:create("ImageLabel", {
+			Parent = instances.window,
+			BorderColor3 = library.theme["OutlineColor"],
+			Image = "rbxassetid://14684557999",
+			BackgroundTransparency = 1,
+			Position = dim2(0, 132, 0, 5),
+			Size = dim2(0, 13, 0, 110),
+			ZIndex = 100,
+			BorderSizePixel = 2,
+			BackgroundColor3 = rgb(255, 0, 0)
+		}, true)
+
+		library:create("UIStroke", {
+			Parent = instances.hue,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.hue_pointer = library:create("Frame", {
+			Parent = instances.hue,
+			AnchorPoint = vec2(0, 0.5),
+			Size = dim2(1, 0, 0, 3),
+			Position = dim2(0, 0, clamp(info.h, 0, 1), 0),
+			BorderSizePixel = 0,
+			BorderColor3 = library.theme["OutlineColor"],
+			ZIndex = 100,
+			BackgroundColor3 = library.theme["TextColor"]
+		}, true)
+
+		library:create("UIStroke", {
+			Parent = instances.hue_pointer,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.grid = info.alpha and library:create("ImageLabel", {
+			Parent = instances.window,
+			ScaleType = Enum.ScaleType.Tile,
+			ResampleMode = Enum.ResamplerMode.Pixelated,
+			TileSize = UDim2.new(0, 9, 0, 9),
+			BorderColor3 = library.theme["OutlineColor"],
+			Image = "rbxassetid://18274452449",
+			BackgroundTransparency = 1,
+			Position = dim2(0, 5, 0, 102),
+			Size = dim2(0, 120, 0, 13),
+			ZIndex = 100,
+			BorderSizePixel = 2,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.grid,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.alpha = library:create("Frame", {
+			Parent = instances.grid,
+			Size = dim2(1, 0, 1, 0),
+			ZIndex = 100,
+			BackgroundColor3 = info.default
+		}, true)
+
+		library:create("UIGradient", {
+			Parent = instances.alpha,
+			Transparency = numseq{numkey(0, 1), numkey(1, 0)}
+		})
+
+		instances.alpha_pointer = library:create("Frame", {
+			Parent = instances.alpha,
+			AnchorPoint = vec2(0.5, 0),
+			Size = dim2(0, 3, 1, 0),
+			Position = dim2(info.alpha and clamp(info.alpha, 0, 1) or 0, 0, 0, 0),
+			BorderSizePixel = 0,
+			BorderColor3 = library.theme["OutlineColor"],
+			ZIndex = 100,
+			BackgroundColor3 = library.theme["TextColor"]
+		}, true)
+
+		library:create("UIStroke", {
+			Parent = instances.alpha_pointer,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.color = library:create("TextButton", {
+			Parent = instances.window,
+			FontFace =  library.font,
+			TextColor3 = library.theme["OutlineColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = "",
+			AutoButtonColor = false,
+			BorderSizePixel = 2,
+			Position = dim2(0, 5, 0, 5),
+			Size = dim2(0, 120, 0, 90),
+			ZIndex = 100,
+			TextSize = library.textsize,
+			BackgroundColor3 = info.default
+		}, true)
+
+		instances.sat = library:create("ImageLabel", {
+			Parent = instances.color,
+			BorderColor3 = library.theme["OutlineColor"],
+			Image = "rbxassetid://14684562507",
+			BackgroundTransparency = 1,
+			Size = dim2(1, 0, 1, 0),
+			ZIndex = 100,
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.val = library:create("ImageLabel", {
+			Parent = instances.color,
+			BorderColor3 = library.theme["OutlineColor"],
+			Image = "rbxassetid://14684563800",
+			BackgroundTransparency = 1,
+			Size = dim2(1, 0, 1, 0),
+			ZIndex = 100,
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.satval_pointer = library:create("Frame", {
+			Parent = instances.color,
+			AnchorPoint = vec2(0.5, 0.5),
+			Size = dim2(0, 4, 0, 4),
+			Position = dim2(clamp(1 - info.s, 0, 1), 0, clamp(1 - info.v, 0, 1), 0),
+			BorderSizePixel = 2,
+			BorderColor3 = library.theme["OutlineColor"],
+			ZIndex = 100,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.satval_pointer,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UICorner", {
+			Parent = instances.satval_pointer,
+			CornerRadius = UDim.new(.5, 0)
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.color,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.textbox = library:create("Frame", {
+			Parent = instances.window,
+
+			Size = info.alpha and dim2(1, -10, 0, 14) or dim2(0, 120, 0, 14),
+			Position = dim2(0, 5, 0, info.alpha and 122 or 100),
+			BorderSizePixel = 2,
+			BorderColor3 = library.theme["OutlineColor"],
+			ZIndex = 100,
+			BackgroundColor3 = library.theme["ElementColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.textbox,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.textbox,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, rgb(181, 181, 181)), rgbkey(1, library.theme["TextColor"])}
+		})
+
+		instances.text_content = library:create("TextBox", {
+			Parent = instances.textbox,
+			PlaceholderText = info.alpha and "r, g, b, a" or "r, g, b",
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = (info.value .. (info.alpha and ", " .. info.alpha or "")),
+			ClearTextOnFocus = false,
+			BackgroundTransparency = 1,
+			Position = dim2(0, 0, 0, 0),
+			Size = dim2(1, 0, 1, 0),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			TextWrapped = true,
+			ZIndex = 100,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+	end
+
+	return instances
+end
+
+library.slider = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+		info.min = info.oldmin
+		info.max = info.oldmax
+		info.default = info.olddefault
+		info.decimals = info.decimals
+	end
+
+	local instances = {} do
+		instances.slider = library:create("Frame", {
+			Parent = parent,
+			BackgroundTransparency = 1,
+			Size = dim2(1, 0, 0, 22),
+			BorderColor3 = library.theme["OutlineColor"],
+			ZIndex = -100,
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.realslider = library:create("Frame", {
+			Parent = instances.slider,
+			AnchorPoint = vec2(0, 1),
+			Position = dim2(0, 0, 1, 0),
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 0, 9),
+			BorderSizePixel = 2,
+			BackgroundColor3 = library.theme["ElementColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.realslider,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		instances.indicator = library:create("Frame", {
+			Parent = instances.realslider,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2((info.default - info.min) / (info.max - info.min), 0, 1, 0),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["AccentColor"]
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.indicator,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, rgb(181, 181, 181)), rgbkey(1, library.theme["TextColor"])}
+		})
+
+		instances.value = library:create("TextLabel", {
+			Parent = instances.realslider,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = `{info.default}/{info.max}`,
+			TextStrokeTransparency = 0,
+			BackgroundTransparency = 1,
+			Position = dim2(0, 0, 0, 0),
+			Size = dim2(1, 0, 1, 0),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.text = library:create("TextLabel", {
+			Parent = instances.realslider,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			Size = dim2(1, 0, 0, 14),
+			BackgroundTransparency = 1,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = dim2(0, 0, 0, -15),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.realslider,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, rgb(181, 181, 181)), rgbkey(1, library.theme["TextColor"])}
+		})
+	end
+
+	return instances
+end
+
+library.dropdown = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+		info.default = info.default
+	end
+
+	local instances = {} do
+		instances.dropdown = library:create("Frame", {
+			Parent = parent,
+			BackgroundTransparency = 1,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 0, 30),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.realdropdown = library:create("Frame", {
+			Parent = instances.dropdown,
+			BorderColor3 = library.theme["OutlineColor"],
+			AnchorPoint = vec2(0, 1),
+			Position = dim2(0, 0, 1, 0),
+			Size = dim2(1, 0, 0, 15),
+			BorderSizePixel = 2,
+			BackgroundColor3 = library.theme["ElementColor"]
+		})
+
+		instances.value = library:create("TextLabel", {
+			Parent = instances.realdropdown,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.default,
+			Size = dim2(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = dim2(0, 0, 0, 0),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.value,
+			PaddingLeft = dim(0, 4)
+		})
+
+		instances.side = library:create("Frame", {
+			Parent = instances.realdropdown,
+			BorderColor3 = library.theme["OutlineColor"],
+			AnchorPoint = vec2(1, 0),
+			BackgroundTransparency = 1,
+			Position = dim2(1, 0, 0, 0),
+			Size = dim2(0, 15, 0, 15),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.img = library:create("ImageLabel", {
+			Parent = instances.side,
+			ImageColor3 = rgb(217, 217, 217),
+			ScaleType = Enum.ScaleType.Fit,
+			Active = true,
+			BorderColor3 = library.theme["OutlineColor"],
+			AnchorPoint = vec2(0, 0.5),
+			Image = "rbxassetid://17830630301",
+			BackgroundTransparency = 1,
+			Position = dim2(0, 0, 0.5, 0),
+			Size = dim2(0, 8, 0, 8),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.text = library:create("TextLabel", {
+			Parent = instances.realdropdown,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			Size = dim2(1, 0, 0, 14),
+			BackgroundTransparency = 1,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = dim2(0, 0, 0, -16),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.realdropdown,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.realdropdown,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, rgb(181, 181, 181)), rgbkey(1, library.theme["TextColor"])}
+		})
+
+		instances.optionholder = library:create("TextButton", {
+			Parent = instances.dropdown,
+			Visible = false,
+			Text = "",
+			AutoButtonColor = false,
+			Modal = true,
+			BorderColor3 = library.theme["OutlineColor"],
+			BorderSizePixel = 2,
+			Position = dim2(0, 0, 0, 35),
+			Size = dim2(1, 0, 0, 40),
+			ZIndex = 20,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundColor3 = library.theme["ElementColor"]
+		})
+
+		instances.content = library:create("ScrollingFrame", {
+			Parent = instances.optionholder,
+			TopImage = "rbxassetid://9634165297",
+			MidImage = "rbxassetid://9634165297",
+			BottomImage = "rbxassetid://9634165297",
+			Active = true,
+			ScrollBarThickness = 2,
+			ScrollBarImageColor3 = library.theme["AccentColor"],
+			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			HorizontalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
+			CanvasSize = UDim2.new(0, 0, 0, 0),
+			BorderColor3 = library.theme["OutlineColor"],
+			BackgroundTransparency = 1,
+			Size = dim2(1, 0, 1, 0),
+			BorderSizePixel = 0,
+			ZIndex = 20,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.optionholder,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.content,
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+
+	end
+
+	return instances.content, instances
+end
+
+library.option = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+		info.active = info.active
+	end
+
+	local instances = {} do
+		instances.option = library:create("TextLabel", {
+			Parent = parent,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = "",
+			TextStrokeTransparency = 0,
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Size = dim2(1, 0, 0, 14),
+			ZIndex = 20,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.text = library:create("TextLabel", {
+			Parent = instances.option,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			TextTransparency = info.active and 1 or 0,
+			TextStrokeTransparency = 0,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Size = dim2(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			BorderSizePixel = 0,
+			ZIndex = 20,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.text,
+			PaddingLeft = dim(0, 3)
+		})
+
+		instances.text_accent = library:create("TextLabel", {
+			Parent = instances.option,
+			FontFace =  library.font,
+			TextColor3 = library.theme["AccentColor"],
+			TextTransparency = info.active and 0 or 1,
+			Text = info.title,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextStrokeTransparency = 0,
+			Size = dim2(1, 0, 1, 0),
+			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			BorderColor3 = library.theme["OutlineColor"],
+			ZIndex = 20,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.text_accent,
+			PaddingLeft = dim(0, 3)
+		})
+	end
+
+	return instances
+end
+
+library.button = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+		info.parent = info.parent
+	end
+
+	local instances = {} do
+		instances.holder = info.parent.class == "element" and parent or library:create("Frame", {
+			Parent = parent,
+			BorderColor3 = library.theme["OutlineColor"],
+			BackgroundTransparency = 1,
+			Size = dim2(1, 0, 0, 14),
+			BackgroundColor3 = library.theme["ElementColor"]
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.holder,
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalFlex = Enum.UIFlexAlignment.Fill,
+			Padding = dim(0, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+
+		instances.button = library:create("Frame", {
+			Parent = instances.holder,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 0, 14),
+			BorderSizePixel = 2,
+			BackgroundColor3 = library.theme["ElementColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.button,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.button,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, rgb(181, 181, 181)), rgbkey(1, library.theme["TextColor"])}
+		})
+
+		instances.text = library:create("TextLabel", {
+			Parent = instances.button,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			BackgroundTransparency = 1,
+			Position = dim2(0, 0, 0, 0),
+			Size = dim2(1, 0, 1, 0),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.text_accent = library:create("TextLabel", {
+			Parent = instances.button,
+			FontFace =  library.font,
+			TextColor3 = library.theme["AccentColor"],
+			TextTransparency = 1,
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			BackgroundTransparency = 1,
+			Position = dim2(0, 0, 0, 0),
+			Size = dim2(1, 0, 1, 0),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+	end
+
+	return instances.holder, instances
+end
+
+library.textbox = function(parent, info)
+	info = info or {} do
+		info.title = info.title
+		info.placeholder = info.placeholder
+	end
+
+	local instances = {} do
+		instances.textbox = library:create("Frame", {
+			Parent = parent,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			Size = dim2(1, 0, 0, 14),
+			BorderSizePixel = 2,
+			BorderColor3 = library.theme["OutlineColor"],
+			BackgroundColor3 = library.theme["ElementColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.textbox,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.textbox,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, rgb(181, 181, 181)), rgbkey(1, library.theme["TextColor"])}
+		})
+
+		instances.text = library:create("TextBox", {
+			Parent = instances.textbox,
+			PlaceholderText = info.placeholder,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			FontFace =  library.font,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ClearTextOnFocus = info.cleartext,
+			BackgroundTransparency = 1,
+			Position = dim2(0, 0, 0, 0),
+			Size = dim2(1, 0, 1, 0),
+			TextWrapped = true,
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIPadding", {
+			Parent = instances.text,
+			PaddingLeft = dim(0, 3)
+		})
+	end
+
+	return instances
+end
+
+library.image = function(parent, info)
+	info = info or {} do
+		info.desc = info.desc
+		info.default = info.default
+	end
+
+	local instances = {} do
+		instances.image = library:create("Frame", {
+			Parent = parent,
+			BackgroundTransparency = 1,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 0, 57),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		instances.imageholder = library:create("Frame", {
+			Parent = instances.image,
+			AnchorPoint = vec2(0, 1),
+			Position = dim2(0, 0, 1, 0),
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(0, 57, 0, 57),
+			BorderSizePixel = 2,
+			BackgroundColor3 = library.theme["ElementColor"]
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.imageholder,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.imageholder,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, rgb(181, 181, 181)), rgbkey(1, library.theme["TextColor"])}
+		})
+
+		instances.realimage = library:create("ImageLabel", {
+			Parent = instances.imageholder,
+			BackgroundTransparency = 1,
+			BorderColor3 = library.theme["OutlineColor"],
+			Size = dim2(1, 0, 1, 0),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIFlexItem", {
+			Parent = instances.imageholder
+		})
+
+		instances.textholder = library:create("Frame", {
+			Parent = instances.image,
+			BorderColor3 = library.theme["OutlineColor"],
+			AnchorPoint = vec2(0, 1),
+			BackgroundTransparency = 1,
+			Position = dim2(0, 0, 1, 0),
+			Size = dim2(1, -250, 0, 50),
+			BorderSizePixel = 2,
+			BackgroundColor3 = rgb(35, 35, 35)
+		})
+
+		instances.text = library:create("TextLabel", {
+			Parent = instances.textholder,
+			RichText = true,
+			TextColor3 = library.theme["TextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.desc,
+			Size = dim2(1, 0, 0, 50),
+			BorderSizePixel = 0,
+			FontFace = library.font,
+			TextWrapped = true,
+			BackgroundTransparency = 1,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.image,
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalFlex = Enum.UIFlexAlignment.Fill,
+			Padding = dim(0, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+
+		instances.buttonholder = library:create("Frame", {
+			Parent = instances.image,
+			BorderColor3 = library.theme["OutlineColor"],
+			AnchorPoint = vec2(0, 1),
+			BackgroundTransparency = 1,
+			Position = dim2(0, 0, 1, 0),
+			Size = dim2(0, 50, 0, 50),
+			BorderSizePixel = 2,
+			BackgroundColor3 = rgb(35, 35, 35)
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.buttonholder,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, rgb(181, 181, 181)), rgbkey(1, library.theme["TextColor"])}
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.buttonholder,
+			Wraps = true,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			HorizontalFlex = Enum.UIFlexAlignment.Fill,
+			Padding = dim(0, 6),
+			ItemLineAlignment = Enum.ItemLineAlignment.Stretch,
+			FillDirection = Enum.FillDirection.Horizontal
+		})
+
+	end
+
+	return instances.buttonholder, instances
+end
+
+library.list = function(parent, info)
+	info = info or {} do
+		info.height = info.height
+		info.table = info.table
+	end
+
+	local instances = {} do
+		instances.table = library:create("Frame", {
+			Parent = parent,
+			Size = dim2(1, 0, 0, info.height),
+			Active = true,
+			BorderColor3 = library.theme["OutlineColor"],
+			Selectable = true,
+			BorderSizePixel = 2,
+			BackgroundColor3 = library.theme["PrimaryColor"]
+		})
+
+		instances.text = not info.headers and library:create("TextBox", {
+			PlaceholderText = info.title,
+			PlaceholderColor3 = library.theme["RowTextColor"],
+			ClearTextOnFocus = true,
+			Parent = instances.table,
+			FontFace =  library.font,
+			TextColor3 = library.theme["RowTextColor"],
+			BorderColor3 = library.theme["OutlineColor"],
+			Text = info.title,
+			RichText = true,
+			TextStrokeTransparency = 0,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextWrapped = true,
+			Size = dim2(1, 0, 0, 20),
+			BackgroundTransparency = 1,
+			Position = dim2(0, 16, 0, -1),
+			BorderSizePixel = 0,
+			TextSize = library.textsize,
+			BackgroundColor3 = library.theme["TextColor"]
+		}) or nil
+
+		library:create("UIPadding", {
+			Parent = instances.text,
+			PaddingLeft = dim(0, 7)
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.table,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			VerticalFlex = Enum.UIFlexAlignment.Fill
+		})
+
+		library:create("UIStroke", {
+			Parent = instances.table,
+			Color = library.theme["InlineColor"],
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		})
+
+		library:create("UIGradient", {
+			Parent = instances.table,
+			Rotation = 90,
+			Color = rgbseq{rgbkey(0, rgb(200, 200, 200)), rgbkey(20 / info.height, library.theme["TextColor"]), rgbkey(1, library.theme["TextColor"])}
+		})
+
+		instances.list = library:create("ScrollingFrame", {
+			Parent = instances.table,
+			Active = true,
+			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			ScrollingDirection = Enum.ScrollingDirection.Y,
+			ZIndex = 2,
+			BorderSizePixel = 0,
+			CanvasSize = dim2(0, 0, 0, 0),
+			ScrollBarImageColor3 = library.theme["AccentColor"],
+			MidImage = "rbxassetid://9634165297",
+			BorderColor3 = library.theme["OutlineColor"],
+			ScrollBarThickness = 2,
+			Size = dim2(1, 0, 1, 0),
+			LayoutOrder = 2,
+			TopImage = "rbxassetid://9634165297",
+			Position = dim2(0, 107, 0, 0),
+			HorizontalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
+			BottomImage = "rbxassetid://9634165297",
+			BackgroundTransparency = 1,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		if not info.headers then
+			library:create("UIPadding", {
+				Parent = instances.list,
+				PaddingLeft = dim(0, 3),
+				PaddingTop = dim(0, 4),
+			})
+		end
+
+		library:create("UIListLayout", {
+			Parent = instances.list,
+			Padding = info.headers and dim(0, 0) or dim(0, 5),
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+	end
+
+	return instances.table, instances.list, instances
+end
+
+library.row = function(parent, info)
+	info = info or {} do
+		info.active = info.active
+		info.columns = info.columns
+		info.header = info.header
+		info.texts = info.texts
+		info.values = info.values
+	end
+
+	local instances = {} do
+		instances.row = library:create("Frame", {
+			Parent = parent,
+			ClipsDescendants = true,
+			BorderColor3 = library.theme["OutlineColor"],
+			BackgroundTransparency = 1,
+			Size = dim2(1, 0, 0, 22),
+			Selectable = true,
+			Active = true,
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["TextColor"]
+		})
+
+		library:create("UIListLayout", {
+			Parent = instances.row,
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalFlex = Enum.UIFlexAlignment.Fill,
+			Padding = dim(0, 4),
+			SortOrder = Enum.SortOrder.LayoutOrder
+		})
+
+		instances.ignore = library:create("Folder", {
+			Parent = instances.row
+		})
+
+		instances.divider = library:create("Frame", {
+			Parent = instances.ignore,
+			Position = dim2(0, 5, 1, -2),
+			BorderColor3 = rgb(24, 24, 24),
+			Size = dim2(1, -10, 0, 2),
+			BorderSizePixel = 0,
+			BackgroundColor3 = library.theme["DividerColor"]
+		})
+
+		for i, value in info.columns do
+			instances[value .. "_label"] = library:create("Frame", {
+				Parent = instances.row,
+				BackgroundTransparency = 1,
+				BorderColor3 = library.theme["OutlineColor"],
+				Size = dim2(1, 0, 0, 20),
+				BorderSizePixel = 0,
+				BackgroundColor3 = library.theme["InlineColor"]
+			})
+
+			instances[value .. "_text"] = library:create(info.header and "TextBox" or "TextLabel", {
+				Parent = instances[value .. "_label"],
+				FontFace = library.font,
+				TextColor3 = info.keyword[value:lower()] or info.header and library.theme["TextColor"] or rgb(200, 200, 200),
+				BorderColor3 = library.theme["OutlineColor"],
+				Text = value,
+				TextStrokeTransparency = 0,
+				Size = dim2(1, 0, 1, 0),
+				BackgroundTransparency = 1,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Position = dim2(0, 0, 0, -1),
+				BorderSizePixel = 0,
+				TextSize = library.textsize,
+				BackgroundColor3 = library.theme["TextColor"]
+			})
+
+			if info.header then
+				instances[value .. "_text"].PlaceholderText = value
+				instances[value .. "_text"].TextWrapped = true
+				instances[value .. "_text"].PlaceholderColor3 = library.theme["TextColor"]
+				instances[value .. "_text"].ClearTextOnFocus = true
+			end
+
+			library:create("UIPadding", {
+				Parent = instances[value .. "_text"],
+				PaddingBottom = dim(0, 5),
+				PaddingTop = dim(0, 5),
+				PaddingLeft = dim(0, 5)
+			})
+
+			instances[value .. "_accent"] = not info.header and library:create("TextLabel", {
+				Parent = instances[value .. "_label"],
+				FontFace = library.font,
+				TextColor3 = library.theme["AccentColor"],
+				BorderColor3 = library.theme["OutlineColor"],
+				Text = value,
+				TextTransparency = info.active and 0 or 1,
+				TextStrokeTransparency = 0,
+				Size = dim2(1, 0, 1, 0),
+				BackgroundTransparency = 1,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Position = dim2(0, 0, 0, -1),
+				BorderSizePixel = 0,
+				TextSize = library.textsize,
+				BackgroundColor3 = library.theme["TextColor"]
+			}) or nil
+
+			library:create("UIPadding", {
+				Parent = instances[value .. "_accent"],
+				PaddingBottom = dim(0, 5),
+				PaddingTop = dim(0, 5),
+				PaddingLeft = dim(0, 5)
+			})
+
+			instances.divider = i ~= #info.columns and library:create("Frame", {
+				Parent = instances[value .. "_label"],
+				Position = dim2(1, -1, 0, 2),
+				BorderColor3 = rgb(24, 24, 24),
+				Size = dim2(0, 2, 1, -4),
+				BorderSizePixel = 0,
+				BackgroundColor3 = library.theme["DividerColor"]
+			}) or nil
+
+			info.texts[i] = {text = instances[value .. "_text"], text_accent = instances[value .. "_accent"]}
+			info.values[value] = info.texts[i]
+		end
+	end
+
+	return instances
+end
+
+return {
+	create = function(self, fonts, defaultfont)
+		library.fonts = fonts
+		library.font = defaultfont
+		
+		return library
+	end
+}
