@@ -137,9 +137,10 @@ function library:create(class, info, ignoretheme)
 end
 
 function library:round(number, places)
-	places = gsub(-log10(places or 0.01), "^-0$", "0") 
+	return places * math.round(number / places)
+	--[[places = gsub(-log10(places or 0.01), "^-0$", "0") 
 
-	return tonumber(format(`%.{places}f`, number))
+	return tonumber(format(`%.{places}f`, number))]]
 end
 
 library.instances = {}
