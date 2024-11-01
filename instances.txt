@@ -2318,10 +2318,7 @@ library.row = function(parent, info)
 end
 
 return {
-	create = function(self, fonts, defaultfont)
-		library.fonts = fonts
-		library.font = defaultfont
-		
+	create = function(self)
 		return library
 	end
 }
