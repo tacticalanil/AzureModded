@@ -137,7 +137,7 @@ function library:create(class, info, ignoretheme)
 end
 
 function library:round(number, places)
-	return places * math.round(number / places)
+	return tonumber(string.format("%.14g", places * math.round(number / places)))
 	--[[places = gsub(-log10(places or 0.01), "^-0$", "0") 
 
 	return tonumber(format(`%.{places}f`, number))]]
@@ -147,7 +147,7 @@ library.instances = {}
 library.texts = {}
 library.fonts = {}
 library.theme = {
-	["AccentColor"] = rgb(255, 255, 255),
+	["AccentColor"] = rgb(99, 149, 244),
 	["PrimaryColor"] = rgb(27, 27, 27),
 	["SecondaryColor"] = rgb(44, 44, 44),
 	["OutlineColor"] = rgb(61, 61, 61),
@@ -908,6 +908,7 @@ library.toggle = function(parent, info)
 			TextColor3 = library.theme["TextColor"],
 			BorderColor3 = library.theme["OutlineColor"],
 			Text = info.title,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			Size = dim2(1, -16, 1, 0),
 			BackgroundTransparency = 1,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -996,6 +997,7 @@ library.label = function(parent, info)
 			TextColor3 = library.theme["TextColor"],
 			BorderColor3 = library.theme["OutlineColor"],
 			Text = info.title,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			RichText = true,
 			TextWrapped = info.paragraph,
 			AnchorPoint = vec2(info.alignment:lower() == "right" and 1 or 0, 0),
@@ -1085,6 +1087,7 @@ end
 
 library.keybind = function(parent, info)
 	info = info or {} do
+		info.title = info.title
 		info.default = info.default
 		info.mode = info.mode
 		info.key = info.key
@@ -1094,7 +1097,6 @@ library.keybind = function(parent, info)
 	end
 
 	local instances = {} do
-
 		instances.keybind = info.parent.class == "element" and parent or library:create("Frame", {
 			Parent = parent,
 			BackgroundTransparency = 1,
@@ -1110,6 +1112,7 @@ library.keybind = function(parent, info)
 			TextColor3 = library.theme["TextColor"],
 			BorderColor3 = library.theme["OutlineColor"],
 			Text = info.title,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			Size = dim2(1, 0, 1, 0),
 			BackgroundTransparency = 1,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -1123,6 +1126,7 @@ library.keybind = function(parent, info)
 			Parent = instances.keybind,
 			BorderColor3 = library.theme["OutlineColor"],
 			Text = "",
+			--Modal = true,
 			AutoButtonColor = false,
 			AnchorPoint = vec2(1, 0),
 			Size = dim2(0, 40, 0, 12),
@@ -1161,7 +1165,9 @@ library.keybind = function(parent, info)
 			PaddingRight = dim(0, 7)
 		})
 
-		instances.window = library:create("Frame", {
+		instances.window = library:create("TextButton", {
+			Text = "",
+			AutoButtonColor = false,
 			Parent = instances.key,
 			Visible = false,
 			BorderColor3 = library.theme["OutlineColor"],
@@ -1193,7 +1199,7 @@ library.keybind = function(parent, info)
 				TextColor3 = library.theme["TextColor"],
 				TextTransparency = info.mode == mode and 1 or 0,
 				Text = mode,
-				Modal = true,
+				--Modal = true,
 				Size = dim2(1, 0, 0, 13),
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
@@ -1251,6 +1257,7 @@ library.colorpicker = function(parent, info)
 			TextColor3 = library.theme["TextColor"],
 			BorderColor3 = library.theme["OutlineColor"],
 			Text = info.title,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			Size = dim2(1, 0, 1, 0),
 			BackgroundTransparency = 1,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -1274,7 +1281,9 @@ library.colorpicker = function(parent, info)
 			BackgroundColor3 = library.theme["TextColor"]
 		})
 
-		instances.colorbutton = library:create("Frame", {
+		instances.colorbutton = library:create("TextButton", {
+			AutoButtonColor = false,
+			Text = "",
 			Parent = instances.gridbutton,
 			BorderColor3 = library.theme["OutlineColor"],
 			Size = dim2(1, 0, 1, 0),
@@ -1301,7 +1310,7 @@ library.colorpicker = function(parent, info)
 			AutoButtonColor = false,
 			Rotation = .0000000001,
 			Text = "",
-			Modal = true,
+			--Modal = true,
 			BorderColor3 = library.theme["OutlineColor"],
 			AnchorPoint = vec2(1, 0),
 			Position = dim2(1, 0, 1, 10),
@@ -1583,6 +1592,7 @@ library.slider = function(parent, info)
 			TextColor3 = library.theme["TextColor"],
 			BorderColor3 = library.theme["OutlineColor"],
 			Text = info.title,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			Size = dim2(1, 0, 0, 14),
 			BackgroundTransparency = 1,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -1606,6 +1616,7 @@ library.dropdown = function(parent, info)
 	info = info or {} do
 		info.title = info.title
 		info.default = info.default
+		info.height = info.height
 	end
 
 	local instances = {} do
@@ -1634,6 +1645,7 @@ library.dropdown = function(parent, info)
 			TextColor3 = library.theme["TextColor"],
 			BorderColor3 = library.theme["OutlineColor"],
 			Text = info.default,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			Size = dim2(1, 0, 1, 0),
 			BackgroundTransparency = 1,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -1680,6 +1692,7 @@ library.dropdown = function(parent, info)
 			TextColor3 = library.theme["TextColor"],
 			BorderColor3 = library.theme["OutlineColor"],
 			Text = info.title,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			Size = dim2(1, 0, 0, 14),
 			BackgroundTransparency = 1,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -1706,11 +1719,11 @@ library.dropdown = function(parent, info)
 			Visible = false,
 			Text = "",
 			AutoButtonColor = false,
-			Modal = true,
+			--Modal = true,
 			BorderColor3 = library.theme["OutlineColor"],
 			BorderSizePixel = 2,
 			Position = dim2(0, 0, 0, 35),
-			Size = dim2(1, 0, 0, 40),
+			Size = dim2(1, 0, 0, info.height * 14),
 			ZIndex = 20,
 			AutomaticSize = Enum.AutomaticSize.Y,
 			BackgroundColor3 = library.theme["ElementColor"]
@@ -1779,6 +1792,7 @@ library.option = function(parent, info)
 			TextColor3 = library.theme["TextColor"],
 			BorderColor3 = library.theme["OutlineColor"],
 			Text = info.title,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			TextTransparency = info.active and 1 or 0,
 			TextStrokeTransparency = 0,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -1872,6 +1886,7 @@ library.button = function(parent, info)
 			TextColor3 = library.theme["TextColor"],
 			BorderColor3 = library.theme["OutlineColor"],
 			Text = info.title,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			BackgroundTransparency = 1,
 			Position = dim2(0, 0, 0, 0),
 			Size = dim2(1, 0, 1, 0),
@@ -1887,6 +1902,7 @@ library.button = function(parent, info)
 			TextTransparency = 1,
 			BorderColor3 = library.theme["OutlineColor"],
 			Text = info.title,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			BackgroundTransparency = 1,
 			Position = dim2(0, 0, 0, 0),
 			Size = dim2(1, 0, 1, 0),
