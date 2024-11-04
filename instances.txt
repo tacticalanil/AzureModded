@@ -109,23 +109,31 @@ function library:themeinstance(obj, props)
 	table.insert(library.themedinstances, {obj, props})
 end
 
+function library:round(number, places)
+	return tonumber(string.format("%.14g", places * math.round(number / places)))
+	--[[places = gsub(-log10(places or 0.01), "^-0$", "0") 
+
+	return tonumber(format(`%.{places}f`, number))]]
+end
+
+function library:filterthemes(instance, property, value)
+	if typeof(value) ~= "Color3" or (property == "BorderColor3" and instance.BorderSizePixel == 0) then return end
+
+	for key, color in library.theme do
+		if color ~= value or (property ~= "TextColor3" and color == library.theme.TextColor) then continue end
+
+		table.insert(library.themedinstances[key], {instance, property})
+	end
+end
+
 function library:create(class, info, ignoretheme)
 	local instance = Instance.new(class)
 
 	for property, value in info do
 		instance[property] = value
 
-		if typeof(value) ~= "Color3" or ignoretheme then continue end
-		if property == "BorderColor3" and instance.BorderSizePixel == 0 then continue end
-
-		for key, color in library.theme do
-			if property ~= "TextColor3" and color == library.theme.TextColor then continue end
-
-			if color == value then 
-				table.insert(library.themedinstances[key], {instance, property})
-				continue
-			end
-		end
+		if ignoretheme then continue end
+		library:filterthemes(instance, property, value)
 	end
 	
 	if find(class, "Text") then
@@ -134,13 +142,6 @@ function library:create(class, info, ignoretheme)
 	
 	table.insert(library.instances, instance)
 	return instance
-end
-
-function library:round(number, places)
-	return tonumber(string.format("%.14g", places * math.round(number / places)))
-	--[[places = gsub(-log10(places or 0.01), "^-0$", "0") 
-
-	return tonumber(format(`%.{places}f`, number))]]
 end
 
 library.instances = {}
@@ -457,13 +458,21 @@ library.window = function(parent, info)
 			Color = library.theme["InlineColor"],
 			ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		})
-
-		instances.main = library:create("Frame", {
+		
+		instances.background = library:create("Frame", {
 			Parent = instances.inline,
+			AnchorPoint = vec2(0.5, 0),
+			BackgroundTransparency = 1,
+			Position = dim2(0.5, 0, 0, 8),
+			Size = dim2(1, -15, 1, -15),
+			BorderSizePixel = 0
+		})
+		
+		instances.main = library:create("Frame", {
+			Parent = instances.background,
 			BorderColor3 = library.theme["OutlineColor"],
-			AnchorPoint = vec2(0.5, 0.5),
-			Position = dim2(0.5, 0, 0.5, 12),
-			Size = dim2(1, -15, 1, -35),
+			Position = dim2(0, 0, 0, 21),
+			Size = dim2(1, 0, 1, -20),
 			ZIndex = 0,
 			BorderSizePixel = 2,
 			BackgroundColor3 = library.theme["PrimaryColor"]
@@ -485,11 +494,11 @@ library.window = function(parent, info)
 		})
 
 		instances.tabholder = library:create("Frame", {
-			Parent = instances.inline,
+			Parent = instances.background,
 			BackgroundTransparency = 1,
-			Position = dim2(0, 7, 0, 8),
+			Position = dim2(0, 0, 0, 0),
 			BorderColor3 = library.theme["OutlineColor"],
-			Size = dim2(1, -15, 0, 20),
+			Size = dim2(1, 0, 0, 20),
 			BorderSizePixel = 0,
 			BackgroundColor3 = library.theme["TextColor"]
 		})
@@ -1949,9 +1958,9 @@ library.textbox = function(parent, info)
 			PlaceholderText = info.placeholder,
 			AutomaticSize = Enum.AutomaticSize.Y,
 			FontFace =  library.font,
+			Text = info.default or "",
 			TextColor3 = library.theme["TextColor"],
 			BorderColor3 = library.theme["OutlineColor"],
-			Text = info.title,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ClearTextOnFocus = info.cleartext,
 			BackgroundTransparency = 1,
