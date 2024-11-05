@@ -109,13 +109,6 @@ function library:themeinstance(obj, props)
 	table.insert(library.themedinstances, {obj, props})
 end
 
-function library:round(number, places)
-	return tonumber(string.format("%.14g", places * math.round(number / places)))
-	--[[places = gsub(-log10(places or 0.01), "^-0$", "0") 
-
-	return tonumber(format(`%.{places}f`, number))]]
-end
-
 function library:filterthemes(instance, property, value)
 	if typeof(value) ~= "Color3" or (property == "BorderColor3" and instance.BorderSizePixel == 0) then return end
 
@@ -124,6 +117,13 @@ function library:filterthemes(instance, property, value)
 
 		table.insert(library.themedinstances[key], {instance, property})
 	end
+end
+
+function library:round(number, places)
+	return tonumber(string.format("%.14g", places * math.round(number / places)))
+	--[[places = gsub(-log10(places or 0.01), "^-0$", "0") 
+
+	return tonumber(format(`%.{places}f`, number))]]
 end
 
 function library:create(class, info, ignoretheme)
