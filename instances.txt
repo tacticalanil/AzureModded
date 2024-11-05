@@ -10,14 +10,14 @@ isfile = isfile or function() end
 listfiles = listfiles or function() end
 readfile = readfile or function() end
 
-local ReplicatedStorage = cloneref(game:FindService("ReplicatedStorage"))
-local UserInputService  = cloneref(game:FindService("UserInputService"))
-local TweenService      = cloneref(game:FindService("TweenService"))
-local HttpService 		= cloneref(game:FindService("HttpService"))
-local RunService        = cloneref(game:FindService("RunService"))
-local Workspace_        = cloneref(game:FindService("Workspace"))
-local Players           = cloneref(game:FindService("Players"))
-local Debris            = cloneref(game:FindService("Debris"))
+local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
+local UserInputService  = cloneref(game:GetService("UserInputService"))
+local TweenService      = cloneref(game:GetService("TweenService"))
+local HttpService 		= cloneref(game:GetService("HttpService"))
+local RunService        = cloneref(game:GetService("RunService"))
+local Workspace_        = cloneref(game:GetService("Workspace"))
+local Players           = cloneref(game:GetService("Players"))
+local Debris            = cloneref(game:GetService("Debris"))
 
 local hex = Color3.fromHex
 local hsv = Color3.fromHSV
