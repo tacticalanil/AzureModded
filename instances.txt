@@ -1,4 +1,4 @@
-local library = {}
+local library 			= {}
 
 getcustomasset 			= getcustomasset 	or function() end
 makefolder 			= makefolder 		or function() end
