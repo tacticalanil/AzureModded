@@ -2304,8 +2304,8 @@ library.row = function(parent, info)
 	return instances
 end
 
-return {
-	create = function(self)
+return setmetatable({}, {
+	__index = function(self)
 		return library
 	end
-}
+})
