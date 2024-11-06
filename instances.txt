@@ -1,23 +1,22 @@
 local library = {}
 
-getcustomasset		= getcustomasset or function() end
-base64_decode		= base64_decode or function() end
-cloneref 		= cloneref or function(s) return s end
-makefolder 		= makefolder or function() end
-writefile 		= writefile or function() end
-isfolder 		= isfolder or function() end
-isfile 			= isfile or function() end
-listfiles 		= listfiles or function() end
-readfile 		= readfile or function() end
+getcustomasset 			= getcustomasset 	or function() end
+makefolder 				= makefolder 		or function() end
+writefile 				= writefile 		or function() end
+isfolder 				= isfolder 			or function() end
+isfile 					= isfile 			or function() end
+listfiles 				= listfiles 		or function() end
+readfile 				= readfile 			or function() end
+cloneref 				= cloneref 			or function(s) return s end
 
-local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
-local UserInputService  = cloneref(game:GetService("UserInputService"))
-local TweenService      = cloneref(game:GetService("TweenService"))
-local HttpService       = cloneref(game:GetService("HttpService"))
-local RunService        = cloneref(game:GetService("RunService"))
-local Workspace_        = cloneref(game:GetService("Workspace"))
-local Players           = cloneref(game:GetService("Players"))
-local Debris            = cloneref(game:GetService("Debris"))
+local ReplicatedStorage	= cloneref(game:GetService("ReplicatedStorage"))
+local UserInputService	= cloneref(game:GetService("UserInputService"))
+local TweenService		= cloneref(game:GetService("TweenService"))
+local HttpService		= cloneref(game:GetService("HttpService"))
+local RunService		= cloneref(game:GetService("RunService"))
+local Workspace_		= cloneref(game:GetService("Workspace"))
+local Players			= cloneref(game:GetService("Players"))
+local Debris			= cloneref(game:GetService("Debris"))
 
 local hex = Color3.fromHex
 local hsv = Color3.fromHSV
@@ -660,45 +659,37 @@ library.tab = function(parent, info)
 		library:create("UIListLayout", {
 			Parent = instances.tab,
 			SortOrder = Enum.SortOrder.LayoutOrder,
-			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Left,
+			HorizontalFlex = Enum.UIFlexAlignment.Fill,
 			VerticalFlex = Enum.UIFlexAlignment.Fill,
+			Wraps = true,
 			Padding = dim(0, 4)
 		})
 
 		library:create("UIPadding", {
 			Parent = instances.tab,
 			PaddingBottom = dim(0, 5),
-			PaddingTop = dim(0, 12)
-		})
-
-		instances.sectionholders = library:create("Frame", {
-			Parent = instances.tab,
-			Size = dim2(1, 200, 1, -17),
-			LayoutOrder = 1,
-			Position = dim2(0, -100, 0, 12),
-			BackgroundTransparency = 1,
-			BorderColor3 = library.theme["OutlineColor"],
-			BorderSizePixel = 0,
-			ClipsDescendants = true,
-			BackgroundColor3 = library.theme["TextColor"]
+			PaddingLeft = dim(0, 5),
+			PaddingRight = dim(0, 5),
+			PaddingTop = dim(0, 5)
 		})
 
 		instances.left = library:create("ScrollingFrame", {
-			Parent = instances.sectionholders,
+			Parent = instances.tab,
 			TopImage = "rbxassetid://9634165297",
 			MidImage = "rbxassetid://9634165297",
 			BottomImage = "rbxassetid://9634165297",
 			Active = true,
 			ScrollBarThickness = 2,
+			LayoutOrder = 2,
 			ScrollBarImageColor3 = library.theme["AccentColor"],
-			HorizontalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
-			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
 			CanvasSize = UDim2.new(0, 0, 0, 0),
-			ClipsDescendants = false,
 			BackgroundTransparency = 1,
-			Position = dim2(0, 107, 0, 0),
+			Position = dim2(0, 0, 0, 0),
 			BorderColor3 = library.theme["OutlineColor"],
-			Size = dim2(0.5, -107, 1, 0),
+			Size = dim2(0, 0, 0, 0),
 			Name = "left",
 			BorderSizePixel = 0,
 			BackgroundColor3 = library.theme["TextColor"]
@@ -706,9 +697,9 @@ library.tab = function(parent, info)
 
 		library:create("UIPadding", {
 			Parent = instances.left,
-			PaddingBottom = dim(0, 12),
+			PaddingBottom = dim(0, 2),
 			PaddingTop = dim(0, 2),
-			PaddingRight = dim(0, 7)
+			PaddingRight = dim(0, 3)
 		})
 
 		library:create("UIListLayout", {
@@ -718,21 +709,19 @@ library.tab = function(parent, info)
 		})
 
 		instances.right = library:create("ScrollingFrame", {
-			Parent = instances.sectionholders,
+			Parent = instances.tab,
 			TopImage = "rbxassetid://9634165297",
 			MidImage = "rbxassetid://9634165297",
 			BottomImage = "rbxassetid://9634165297",
 			Active = true,
 			ScrollBarThickness = 2,
 			ScrollBarImageColor3 = library.theme["AccentColor"],
-			AutomaticCanvasSize = Enum.AutomaticSize.Y,
-			HorizontalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
+			VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
+			LayoutOrder = 2,
 			CanvasSize = UDim2.new(0, 0, 0, 0),
-			ClipsDescendants = false,
 			BorderColor3 = library.theme["OutlineColor"],
 			BackgroundTransparency = 1,
-			Position = dim2(0.5, 7, 0, 0),
-			Size = dim2(0.5, -107, 1, 0),
+			Size = dim2(0, 0, 0, 0),
 			Name = "right",
 			BorderSizePixel = 0,
 			BackgroundColor3 = library.theme["TextColor"]
@@ -740,9 +729,9 @@ library.tab = function(parent, info)
 
 		library:create("UIPadding", {
 			Parent = instances.right,
-			PaddingBottom = dim(0, 12),
+			PaddingBottom = dim(0, 2),
 			PaddingTop = dim(0, 2),
-			PaddingRight = dim(0, 7)
+			PaddingRight = dim(0, 2)
 		})
 
 		library:create("UIListLayout", {
@@ -753,7 +742,7 @@ library.tab = function(parent, info)
 
 	end
 
-	return instances.sectionholders, instances.tab, instances
+	return instances.tab, instances
 end
 
 library.player_list = function(parent, info)
@@ -762,19 +751,8 @@ library.player_list = function(parent, info)
 	end
 
 	local instances = {} do
-		instances.player_list = library:create("Frame", {
-			Parent = parent,
-			ClipsDescendants = true,
-			BorderColor3 = library.theme["OutlineColor"],
-			BackgroundTransparency = 1,
-			Position = dim2(0, 100, 0, 12),
-			Size = dim2(1, 200, 1, -17),
-			BorderSizePixel = 0,
-			BackgroundColor3 = library.theme["TextColor"]
-		})
-
 		instances.content = library:create("ScrollingFrame", {
-			Parent = instances.player_list,
+			Parent = parent,
 			TopImage = "rbxassetid://9634165297",
 			MidImage = "rbxassetid://9634165297",
 			BottomImage = "rbxassetid://9634165297",
@@ -783,11 +761,12 @@ library.player_list = function(parent, info)
 			ScrollBarImageColor3 = library.theme["AccentColor"],
 			HorizontalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
 			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			LayoutOrder = 1,
 			CanvasSize = UDim2.new(0, 0, 0, 0),
 			ClipsDescendants = false,
 			BackgroundTransparency = 1,
-			Position = dim2(0, 107, 0, 12),
-			Size = dim2(1, -207, 1, -17),
+			Position = dim2(0, 0, 0, 0),
+			Size = dim2(1, 0, 1, 0),
 			BorderColor3 = library.theme["OutlineColor"],
 			BorderSizePixel = 0,
 			BackgroundColor3 = library.theme["TextColor"]
@@ -1728,7 +1707,6 @@ library.dropdown = function(parent, info)
 			Visible = false,
 			Text = "",
 			AutoButtonColor = false,
-			--Modal = true,
 			BorderColor3 = library.theme["OutlineColor"],
 			BorderSizePixel = 2,
 			Position = dim2(0, 0, 0, 35),
