@@ -1,19 +1,19 @@
 local library = {}
 
-getcustomasset = getcustomasset or function() end
-base64_decode = base64_decode or function() end
-cloneref = cloneref or function(s) return s end
-makefolder = makefolder or function() end
-writefile = writefile or function() end
-isfolder = isfolder or function() end
-isfile = isfile or function() end
-listfiles = listfiles or function() end
-readfile = readfile or function() end
+getcustomasset		= getcustomasset or function() end
+base64_decode		= base64_decode or function() end
+cloneref 		= cloneref or function(s) return s end
+makefolder 		= makefolder or function() end
+writefile 		= writefile or function() end
+isfolder 		= isfolder or function() end
+isfile 			= isfile or function() end
+listfiles 		= listfiles or function() end
+readfile 		= readfile or function() end
 
 local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
 local UserInputService  = cloneref(game:GetService("UserInputService"))
 local TweenService      = cloneref(game:GetService("TweenService"))
-local HttpService 		= cloneref(game:GetService("HttpService"))
+local HttpService       = cloneref(game:GetService("HttpService"))
 local RunService        = cloneref(game:GetService("RunService"))
 local Workspace_        = cloneref(game:GetService("Workspace"))
 local Players           = cloneref(game:GetService("Players"))
