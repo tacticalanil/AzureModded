@@ -1,46 +1,46 @@
 local library = {}
 
-getcustomasset 			= getcustomasset 	or function() end
-makefolder 				= makefolder 		or function() end
-writefile 				= writefile 		or function() end
-isfolder 				= isfolder 			or function() end
-isfile 					= isfile 			or function() end
-listfiles 				= listfiles 		or function() end
-readfile 				= readfile 			or function() end
-cloneref 				= cloneref 			or function(s) return s end
+getcustomasset	 		= getcustomasset 	or function() end
+makefolder 			= makefolder 		or function() end
+writefile 			= writefile 		or function() end
+isfolder 			= isfolder 		or function() end
+isfile 				= isfile 		or function() end
+listfiles 			= listfiles 		or function() end
+readfile 			= readfile 		or function() end
+cloneref 			= cloneref 		or function(s) return s end
 
-local ReplicatedStorage	= cloneref(game:GetService("ReplicatedStorage"))
-local UserInputService	= cloneref(game:GetService("UserInputService"))
-local TweenService		= cloneref(game:GetService("TweenService"))
-local HttpService		= cloneref(game:GetService("HttpService"))
-local RunService		= cloneref(game:GetService("RunService"))
-local Workspace_		= cloneref(game:GetService("Workspace"))
-local Players			= cloneref(game:GetService("Players"))
-local Debris			= cloneref(game:GetService("Debris"))
+local ReplicatedStorage		= cloneref		(game:GetService "ReplicatedStorage")
+local UserInputService		= cloneref		(game:GetService "UserInputService")
+local TweenService		= cloneref		(game:GetService "TweenService")
+local HttpService		= cloneref		(game:GetService "HttpService")
+local RunService		= cloneref		(game:GetService "RunService")
+local Workspace_		= cloneref		(game:GetService "Workspace")
+local Players			= cloneref		(game:GetService "Players")
+local Debris			= cloneref		(game:GetService "Debris")
 
-local hex = Color3.fromHex
-local hsv = Color3.fromHSV
-local rgb = Color3.fromRGB
+local hex 			= Color3.fromHex
+local hsv 			= Color3.fromHSV
+local rgb 			= Color3.fromRGB
 
-local rgbkey = ColorSequenceKeypoint.new
-local rgbseq = ColorSequence.new
-local numkey = NumberSequenceKeypoint.new
-local numseq = NumberSequence.new
+local rgbkey 			= ColorSequenceKeypoint.new
+local rgbseq 			= ColorSequence.new
+local numkey 			= NumberSequenceKeypoint.new
+local numseq 			= NumberSequence.new
 
-local dim2 = UDim2.new
-local dim = UDim.new
-local vec2 = Vector2.new
-local rect = Rect.new
+local dim2 			= UDim2.new
+local dim 			= UDim.new
+local vec2 			= Vector2.new
+local rect 			= Rect.new
 
-local floor = math.floor
-local clamp = math.clamp
-local log10 = math.log10
+local floor 			= math.floor
+local clamp 			= math.clamp
+local log10 			= math.log10
 
-local gsub = string.gsub
-local format = string.format
-local find = string.find
-local match = string.match
-local split = string.split
+local gsub 			= string.gsub
+local format 			= string.format
+local find 			= string.find
+local match 			= string.match
+local split 			= string.split
 
 function library:tableize(target)
 	local _table = {}
