@@ -2305,7 +2305,7 @@ library.row = function(parent, info)
 end
 
 return setmetatable({}, {
-	__index = function(self)
+	__call = function(self)
 		return library
 	end
 })
