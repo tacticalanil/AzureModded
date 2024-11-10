@@ -699,6 +699,7 @@ library.tab = function(parent, info)
 			Parent = instances.left,
 			PaddingBottom = dim(0, 2),
 			PaddingTop = dim(0, 2),
+			PaddingLeft = dim(0, 2),
 			PaddingRight = dim(0, 3)
 		})
 
@@ -731,6 +732,7 @@ library.tab = function(parent, info)
 			Parent = instances.right,
 			PaddingBottom = dim(0, 2),
 			PaddingTop = dim(0, 2),
+			PaddingLeft = dim(0, 2),
 			PaddingRight = dim(0, 2)
 		})
 
